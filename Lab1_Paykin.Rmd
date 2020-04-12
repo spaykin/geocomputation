@@ -1,0 +1,66 @@
+---
+title: "Lab 1: Intro to R, Rmd, & GitHub"
+subtitle: "GIS III: Spring 2020"
+author: "Susan Paykin"
+date: "4/10/2020"
+output: 
+  pdf_document:
+    highlight: tango 
+---
+
+The following lab walks through basics of creating an R Markdown file. Prepared for Dr. Marynia Kolak's GIS III course at the University of Chicago. 
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Showing the R version installed:
+  
+```{r version}
+
+version
+
+```
+
+## Loading libraries:
+ 
+```{r load libraries, echo = FALSE}
+
+library(tidyverse)
+library(sf)
+library(spData)
+
+```
+
+## Examples of R code:
+
+```{r code}
+
+# View variables of World Bank Population dataset
+names(world_bank_pop)
+
+# Look at unique country abbreviations
+unique(world_bank_pop$country)
+unique(world_bank_pop$indicator)
+
+# Select new data frame for Vietnam population 2015 - 2017
+vietnam_pop <- 
+  world_bank_pop %>%
+  filter(country == "VNM") %>%
+  filter(indicator == "SP.POP.TOTL") %>%
+  select(`2015`, `2016`, `2017`)
+
+# Create bar plot
+barplot(
+  as.matrix(vietnam_pop),
+  ylim = range(pretty(vietnam_pop)),
+  ylab = "Population",
+  main = "Vietnam Population Total by Year"
+)
+           
+```
+
+
+ 
