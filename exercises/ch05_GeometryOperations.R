@@ -1,5 +1,5 @@
 # Author: Susan Paykin
-# Date: 4/22/2020
+# Date: April 22, 2020
 # Geocomputation in R
 # for GIS III: University of Chicago
 
