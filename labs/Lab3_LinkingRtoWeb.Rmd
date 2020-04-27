@@ -1,0 +1,68 @@
+---
+title: "Lab2 : Linking R to the Web"
+subtitle: GIS III | University of Chicago | Spring 2020
+author: "Susan Paykin"
+date: "4/23/2020"
+output: html_document
+---
+## Instructions
+
+*Using what you've learned, generate an Rmarkdown file that uses an online dataset. Using data from the lab is fine, or you can find your own data. Load, extract, clean, and plot the data as a well-designed map. The file you generate should highlight key features throughout this process, and end with a carefully made map. It should be (at least slightly) different from the plots generated in the lab. Render your file as a pdf and/or html, publish on your Github, and link here.*
+
+## Identify and load web data (GeoJSON)
+
+```{r libraries, include = FALSE}
+
+library(RCurl)
+library(rjson)
+library(geojsonio)
+library(httr)
+library(sf)
+library(rlist)
+library(rgdal)
+library(tidyverse)
+library(tmap)
+library(leaflet)
+
+```
+
+```{r read in data}
+
+# Read in Loudon County Soil Point Features from web
+loudon <- geojson_read("https://opendata.arcgis.com/datasets/e77b3da29ea3447bb401ecaf1288eade_0.geojson", what = "sp")
+
+# Initial plot
+plot(loudon)
+
+# View data
+loudon_df <- loudon@data
+```
+
+## Filter and clean data
+```{r}
+# Filter for rocky, clay, gravely, sandy, stoney, and wet soil features
+loudon_df2 <- 
+  loudon_df %>%
+  filter(SP_SYMBOL == c("ROC", "CLA", "GRA", "SAN", "STN", "WET"))
+
+loudon_plot <- 
+  loudon[loudon@data$SP_SYMBOL == c("ROC", "CLA", "GRA", "SAN", "STN", "WET"), ]
+```
+
+## Create interactive map
+
+This map highlights the soil features by type: gravely (**GRA**), rocky (**ROC**), stoney (**STN**), and wet (**WET**).
+
+```{r map}
+
+# View Interactive Map
+tmap_mode("view")
+
+tm_shape(loudon_plot) +
+  tm_bubbles(col = "SP_SYMBOL", size = .2,
+             border.alpha = 0.5) +
+  tm_layout(frame = FALSE) +
+  tm_legend(title = "Soil Point Features") +
+  tm_basemap(leaflet::providers$OpenStreetMap.BlackAndWhite)
+```
+
