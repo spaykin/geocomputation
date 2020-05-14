@@ -1,0 +1,246 @@
+---
+title: "Chapter 10: Scripts, Algorithms & Functions"
+subtitle: "Geocomputation in R"
+output: html_notebook
+---
+
+Notes and exercises from Ch 10 on scripts, algorithms and functions in [Geocomputation in R](https://geocompr.robinlovelace.net/algorithms.html) by Robin Lovelace.
+
+## 10.2 Scripts
+
+If **functions** distributed in packages are the building blocks of R clode, then **scripts** are the glue that holds them together, in logical order, to create reproducible workflows.
+
++ Write the script in order: i.e. set-up, data processing, save results
+
++ Add comments to script so that other people (and future self) can understand it. Comment should state the purpose of the script and divides it inot sections
+
++ Scripts should be reproducible; scripts to work on any computer. Attach required packages at beginning, read-in data from persistent sources (i.e. website), and ensure previous steps have been taken. 
+
+## 10.3 Geometric Algorithms
+
+**Algorithms** are the computing equivalent of a cooking recipe: complete set of instructions which, when underataken on the input (ingredients) result in useful (tasty) outputs. 
+
++ Often start as flow charts or pseudocode showing the aim of the process before being implemented in code. 
++ Often packaged inside functions, which may hide some or all of the steps taken (look at the function's source code if you want to find the steps).
+
+**Geoalgorithsms** taken geographic data in return geographic results.
+
+*Example - find the centroid of a polygon:* 
+
++ Step 1. Divide polygon into contiguous triangles. 
++ Step 2. Find the centroid of each triangle. 
++ Step 3. Find the area of each triangle. 
++ Step 4. Find the area-weighted mean of triangle centroids. 
+
+These steps could also be presented as a schematic diagram or pseudocode. 
+
+```{r}
+# generate a simple matrix representation of a polygon: 
+x_coords = c(10, 0, 0, 12, 20, 10)
+y_coords = c(0, 0, 10, 20, 15, 0)
+poly_mat = cbind(x_coords, y_coords)
+```
+
+#### Step 1 - Divide polygon into contiguous triangles
+```{r}
+# create point representing origin: 
+Origin = poly_mat[1, ]
+# create 'triangle matrix':
+T1 = rbind(Origin, poly_mat[2:3, ], Origin) 
+
+```
+
+#### Step 2 - Find centroid of each triangle
+```{r}
+# find centroid (drop = FALSE preserves classes, resulting in a matrix):
+C1 = (T1[1, , drop = FALSE] + T1[2, , drop = FALSE] + T1[3, , drop = FALSE]) / 3
+
+print(C1)
+```
+
+#### Step 3 - Find area of each triangle
+```{r}
+# calculate the area of the triangle represented by matrix T1:
+abs(T1[1, 1] * (T1[2, 2] - T1[3, 2]) +
+  T1[2, 1] * (T1[3, 2] - T1[1, 2]) +
+  T1[3, 1] * (T1[1, 2] - T1[2, 2]) ) / 2
+```
+
+#### Step 4 - Find area-weighted mean of triangle centroids
+```{r}
+# Requires iteration to create all triangles representing the polygon
+# use lapply() and vapply() to iterate over each triangle
+i = 2:(nrow(poly_mat) - 2)
+T_all = lapply(i, function(x) {
+  rbind(Origin, poly_mat[x:(x + 1), ], Origin)
+})
+
+C_list = lapply(T_all,  function(x) (x[1, ] + x[2, ] + x[3, ]) / 3)
+C = do.call(rbind, C_list)
+
+A = vapply(T_all, function(x) {
+  abs(x[1, 1] * (x[2, 2] - x[3, 2]) +
+        x[2, 1] * (x[3, 2] - x[1, 2]) +
+        x[3, 1] * (x[1, 2] - x[2, 2]) ) / 2
+  }, FUN.VALUE = double(1))
+```
+
+```{r, echo=FALSE}
+# calculate the total area with sum(A) and centroids coordates of the polygon
+print("The area is: ")
+sum(A)
+```
+
+```{r, echo=FALSE}
+print("The coordinates of the centroid are:")
+weighted.mean(C[, 1], A)
+weighted.mean(C[, 2], A)
+```
+
+
+## 10.4 Functions
+
+**Functions** taken an input and return an output, like algorithms, but also refer to the implementation in a particular programming language, rather than the 'recipe' itself. 
+
+In R, functions are objects in their own right that can be created and joined together in a modular fashion. 
+
+*Example: create a function that undertakes Step 2 of algorithm*
++ Function **body**: code inside curly brackest that define what functions does with inputs
++ **formals**: list of arguments the function works with, which is `x` in this case. 
+
+```{r}
+# create function to find centroid of triangle
+t_centroid = function(x) {
+  (x[1, ] + x[2, ] + x[3, ]) / 3
+}
+
+# test function on input T1
+t_centroid(T1)
+
+```
+
+*Example: Create function to calculate triangle's area, `t_area()`:*
+
+```{r}
+# create function to calculate triangle's area
+t_area = function(x) {
+  abs(
+    x[1, 1] * (x[2, 2] - x[3, 2]) +
+    x[2, 1] * (x[3, 2] - x[1, 2]) +
+    x[3, 1] * (x[1, 2] - x[2, 2])
+  ) / 2
+}
+
+# test function on input T1
+t_area(T1)
+
+```
+
+Test generalizability of the function by using it to find the area of a new triangle matrix (height = 1, base = 3):
+
+```{r}
+t_new = cbind(x = c(0, 3, 3, 0),
+              y = c(0, 0, 1, 0))
+t_area(t_new)
+
+```
+
+
+Functions are **modular**, so you can use one function as a building block of another. 
+
+For example, use functions `t_centroid()` and `t_area()` to build a larger function to calculate the area of any convex polygon, `poly_centroid()`. (This also mimics the behavior of `sf::st_centroid()` for convex polygons.)
+
+```{r}
+
+# create function
+poly_centroid = function(x) {
+  i = 2:(nrow(x) - 2)
+  T_all = lapply(i, function(x) {
+    rbind(Origin, poly_mat[x:(x + 1), ], Origin)
+  })
+  C_list = lapply(T_all, t_centroid)
+  C = do.call(rbind, C_list)
+  A = vapply(T_all, t_area, FUN.VALUE = double(1))
+  c(weighted.mean(C[, 1], A), weighted.mean(C[, 2], A))
+}
+
+# test centroid
+poly_centroid(poly_mat)
+
+
+```
+
+## 10.5 Programming
+
+**Programming** combines scripts, algorithms and functions in a way that produces performant, robust and user-friendly tools. 
+
+Note:
+*"There will surely be occasions when writing new functions is the best way forward, but there will also be times when using functions that already exist is the best way forward."*
+
+
+## 10.6 Exercises
+
+### Question 1
+
+Read the script `10-centroid-alg.R` in the code folder of the book’s GitHub repo.
+
++ Which of the best practices covered in Section 10.2 does it follow?
+
++ Create a version of the script on your computer in an IDE such as RStudio (preferably by typing-out the script line-by-line, in your own coding style and with your own comments, rather than copy-pasting — this will help you learn how to type scripts). Using the example of a square polygon (e.g., created with `poly_mat = cbind(x = c(0, 0, 9, 9, 0), y = c(0, 9, 9, 0, 0)))` execute the script line-by-line.
+
++ What changes could be made to the script to make it more reproducible?
+
++ How could the documentation be improved?
+
+#### Answer 1
+
++ Best practices include writing the script in order, which clearly delineates between Steps 1-5; including the Aim and Prerequisites for the script to add more context; and writing inline comments illustrating what the different functions and lines of code were executing. 
+
++ New version of the script: 
+
+```{r}
+
+# Step 1: create square polygon
+poly_mat = cbind(
+    cbind(x = c(0, 0, 9, 9, 0), 
+          y = c(0, 9, 9, 0, 0)))
+
+# Step 2: divide object
+Origin = poly_mat[1, ]
+i = 2:(nrow(poly_mat) - 2)
+T_all = lapply(i, function(x) {
+  rbind(Origin, poly_mat[x:(x + 1), ], Origin)
+})
+
+# Step 3: calculate centroids
+C_list = lapply(T_all, function(x) (x[1, ] + x[2, ] + x[3, ]) / 3)
+C = do.call(rbind, C_list)
+
+# Step 4: calculate areas
+A = vapply(T_all, function(x) {
+  abs(x[1, 1] * (x[2, 2] - x[3, 2]) +
+        x[2, 1] * (x[3, 2] - x[1, 2]) +
+        x[3, 1] * (x[1, 2] - x[2, 2]) ) / 2
+}, FUN.VALUE = double(1))
+
+# Step 5: caclulate area-weighed centroid average
+poly_area = sum(A)
+print(paste0("The area of the centroid is is: ", poly_area))
+poly_centroid = c(weighted.mean(C[, 1], A), weighted.mean(C[, 2], A))
+
+# Step 6: output results
+print(paste0("The coordinates of the centroid are: ",
+             round(poly_centroid[1],2),
+             ", ",
+             round(poly_centroid[2],2),
+                   ")"
+                   )
+)
+
+```
+
+
++ In order to make the script more reproducible, we could include comments and information about the different commands available through Base R and why this base package is sufficient for this script
+
++ The documentation could be improved by including a header section at the top with the scripter's Name, Date Created, Date Updated, and R/R Studio Versions used. 
+
