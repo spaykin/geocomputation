@@ -1,0 +1,12 @@
+name: test_interactiveMap
+title: test_interactiveMap
+username:
+account: susan-paykin
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2338234
+bundleId: 3176237
+url: https://susan-paykin.shinyapps.io/test_interactiveMap/
+when: 1590092450.83179
+asMultiple: FALSE
+asStatic: FALSE
